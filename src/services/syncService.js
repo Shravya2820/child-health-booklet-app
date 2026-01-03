@@ -1,9 +1,15 @@
 export async function uploadRecord(record) {
-  // simulate network delay
-  await new Promise(res => setTimeout(res, 800))
+  const response = await fetch("http://localhost:4000/records", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(record)
+  });
 
-  console.log('Uploaded to server:', record.healthId)
+  if (!response.ok) {
+    throw new Error("Failed to upload record");
+  }
 
-  // pretend server accepted it
-  return { success: true }
+  return await response.json();
 }
