@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import Database from "better-sqlite3";
+import PDFDocument from "pdfkit";
 
 const app = express();
 const PORT = 4000;
@@ -61,6 +62,40 @@ app.post("/records", (req, res) => {
   );
 
   res.json({ success: true });
+});
+
+/* -------------------- PDF GENERATION -------------------- */
+app.get("/records/:healthId/pdf", (req, res) => {
+  const { healthId } = req.params;
+
+  const record = db
+    .prepare("SELECT * FROM records WHERE healthId = ?")
+    .get(healthId);
+
+  if (!record) {
+    return res.status(404).send("Record not found");
+  }
+
+  const doc = new PDFDocument();
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename=${healthId}.pdf`
+  );
+
+  doc.pipe(res);
+
+  doc.fontSize(20).text("Child Health Record Booklet", { align: "center" });
+  doc.moveDown();
+
+  doc.fontSize(12);
+  doc.text(`Health ID: ${record.healthId}`);
+  doc.text(`Name: ${record.name}`);
+  doc.text(`Age: ${record.age}`);
+  doc.text(`Created At: ${record.createdAt}`);
+
+  doc.end();
 });
 
 /* -------------------- START SERVER -------------------- */
