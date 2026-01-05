@@ -1,49 +1,42 @@
-import { useEffect, useState } from 'react'
-import { getAllRecords, markAsSynced } from '../services/offlineDB'
-import { uploadRecord } from '../services/syncService'
-import { isOnline } from '../services/network'
+import { useState } from "react";
+import { syncRecord } from "../services/syncService";
+import { markAsSynced } from "../services/offlineDB";
 
-export default function Sync() {
-  const [records, setRecords] = useState([])
-  const [status, setStatus] = useState('')
+export default function Sync({ record }) {
+  const [status, setStatus] = useState("idle");
 
-  useEffect(() => {
-    getAllRecords().then(setRecords)
-  }, [])
+  const startSync = async () => {
+    setStatus("syncing");
 
-  async function handleSync() {
-    if (!isOnline()) {
-      setStatus('❌ No internet connection')
-      return
+    const result = await syncRecord(record);
+
+    if (result.success) {
+      setStatus("synced");
+
+      // 🔥 VERY IMPORTANT
+      await markAsSynced(record.healthId);
+
+    } else {
+      setStatus("failed");
+
+      // 🔁 retry after 5 seconds
+      setTimeout(() => startSync(), 5000);
     }
-
-    setStatus('🔄 Syncing...')
-
-    for (const record of records.filter(r => !r.synced)) {
-      const res = await uploadRecord(record)
-      if (res.success) {
-        await markAsSynced(record.healthId)
-      }
-    }
-
-    const updated = await getAllRecords()
-    setRecords(updated)
-    setStatus('✅ Sync complete')
-  }
+  };
 
   return (
     <div>
-      <h2>Upload & Sync</h2>
+      <button onClick={startSync}>Sync Now</button>
 
-      <button onClick={handleSync}>Sync Now</button>
+      {status === "synced" && (
+        <p style={{ color: "green" }}>✔ Synced successfully</p>
+      )}
 
-      <p>{status}</p>
-
-      {records.map(r => (
-        <div key={r.healthId}>
-          {r.name} — {r.synced ? '✅ Synced' : '⏳ Pending'}
-        </div>
-      ))}
+      {status === "failed" && (
+        <p style={{ color: "red" }}>
+          ❌ Sync failed. Retrying...
+        </p>
+      )}
     </div>
-  )
+  );
 }

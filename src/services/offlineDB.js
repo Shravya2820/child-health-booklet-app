@@ -25,10 +25,15 @@ export async function getAllRecords() {
 }
 
 export async function markAsSynced(healthId) {
-  const db = await dbPromise
-  const record = await db.get(STORE_NAME, healthId)
+  const db = await openDB("child-health-db", 1);
+  const tx = db.transaction("records", "readwrite");
+  const store = tx.objectStore("records");
+
+  const record = await store.get(healthId);
   if (record) {
-    record.synced = true
-    await db.put(STORE_NAME, record)
+    record.synced = true;
+    await store.put(record);
   }
+
+  await tx.done;
 }
